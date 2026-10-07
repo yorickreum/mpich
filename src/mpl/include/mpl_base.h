@@ -108,7 +108,7 @@
 /* Use this macro for each parameter to a function that is not referenced in
    the body of the function */
 #ifdef MPL_HAVE_WINDOWS_H
-#define MPL_UNREFERENCED_ARG(a) a
+#define MPL_UNREFERENCED_ARG(a) (void) (a)
 #else
 #define MPL_UNREFERENCED_ARG(a)
 #endif
