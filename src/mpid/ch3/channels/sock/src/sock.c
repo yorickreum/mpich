@@ -1780,7 +1780,16 @@ int MPIDI_CH3I_Sock_listen(struct MPIDI_CH3I_Sock_set *sock_set, void *user_ptr,
     /*
      * Bind the socket to all interfaces and the specified port.  The port specified by the calling routine may be 0, indicating
      * that the operating system can select an available port in the ephemeral port range.
+     *
+     * If the advertised interface is the loopback address (e.g. set by a
+     * single-node process manager), only listen on loopback.  Besides not
+     * exposing the port, this avoids firewall prompts on Windows.
      */
+    const char *ifname = getenv("MPICH_INTERFACE_HOSTNAME");
+    int loopback_only = ifname && (strcmp(ifname, "127.0.0.1") == 0 ||
+                                   strcmp(ifname, "localhost") == 0);
+    if (loopback_only)
+        MPL_LISTEN_PUSH(1, SOMAXCONN);
     if (*port == 0) {
         unsigned short portnum;
 
@@ -1800,6 +1809,8 @@ int MPIDI_CH3I_Sock_listen(struct MPIDI_CH3I_Sock_set *sock_set, void *user_ptr,
     } else {
         rc = MPL_listen(fd, *port);
     }
+    if (loopback_only)
+        MPL_LISTEN_POP;
     /*
      * listening for incoming connections...
      */
