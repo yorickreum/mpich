@@ -29,6 +29,8 @@ jobs:
         shell: msys2 {0}
     env:
       TESTDIRS: basic,init,group,pt2pt,comm,coll
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 500M
     steps:
 
     # autotools and shell scripts need LF line endings; .gitattributes has
@@ -59,6 +61,14 @@ jobs:
           git
           mingw-w64-ucrt-x86_64-gcc
           mingw-w64-ucrt-x86_64-python
+          mingw-w64-ucrt-x86_64-ccache
+
+    # runs on main fill the cache, which pull requests then start from
+    - uses: actions/cache@v6
+      with:
+        path: .ccache
+        key: ccache-windows-${{ github.sha }}
+        restore-keys: ccache-windows-
 
     - name: Autogen
       run: ./autogen.sh -without-ucx -without-ofi -without-hwloc
@@ -66,7 +76,7 @@ jobs:
     - name: Configure
       run: |
         mkdir build && cd build
-        ../configure --prefix="$PWD/../install" \
+        ../configure --prefix="$PWD/../install" CC="ccache gcc" \
             --with-device=ch3:sock --with-pm=winexec --without-hwloc \
             --disable-fortran --disable-cxx --disable-romio --disable-doc \
             --enable-shared --disable-static
@@ -99,6 +109,10 @@ jobs:
             grep -E "tests failed out of" runtests.log
             exit 1
         fi
+
+    - name: ccache statistics
+      if: always()
+      run: ccache -s
 
     - uses: actions/upload-artifact@v7
       if: always()
